@@ -14,7 +14,7 @@
 
   .emoji { font-size: 52px; line-height: 1; }
   h2 { font-size: 20px; font-weight: 400; letter-spacing: 2px; }
-  .sub { font-size: 14px; color: rgba(255,255,255,0.4); line-height: 1.7; max-width: 280px; }
+  .sub { font-size: 14px; color: rgba(255,255,255,0.4); line-height: 1.7; max-width: 300px; }
 
   .btn {
     background: #ffd700; color: #000; border: none; border-radius: 14px;
@@ -23,13 +23,6 @@
   }
   .btn:active { opacity: 0.82; transform: scale(0.96); }
   .btn:disabled { opacity: 0.3; pointer-events: none; }
-  .btn-ghost {
-    background: rgba(255,255,255,0.07); color: #fff;
-    border: 1px solid rgba(255,255,255,0.14); border-radius: 14px;
-    padding: 14px 24px; font-size: 15px; cursor: pointer;
-    width: 100%; max-width: 280px;
-  }
-  .btn-ghost:active { background: rgba(255,255,255,0.14); }
 
   input[type=text] {
     background: rgba(255,255,255,0.07); border: 1.5px solid rgba(255,255,255,0.18);
@@ -41,31 +34,45 @@
   }
   input:focus { border-color: rgba(255,215,0,0.45); }
 
-  /* Aim circle */
-  #aim-wrap { position: relative; width: 180px; height: 180px; flex-shrink: 0; }
-  #aim-circle {
-    width: 180px; height: 180px; border-radius: 50%;
-    border: 1.5px solid rgba(255,255,255,0.1);
+  #preview-wrap {
+    position: relative; width: 220px; height: 140px;
+    border: 1.5px solid rgba(255,255,255,0.15);
+    border-radius: 10px;
     background: rgba(255,255,255,0.03);
-    position: absolute; inset: 0;
+    flex-shrink: 0; overflow: hidden;
   }
-  .aim-line {
-    position: absolute; background: rgba(255,255,255,0.07);
+  #preview-label {
+    position: absolute; bottom: 6px; left: 50%; transform: translateX(-50%);
+    font-size: 10px; color: rgba(255,255,255,0.2); white-space: nowrap;
   }
-  #aim-h { width: 100%; height: 1px; top: 50%; left: 0; }
-  #aim-v { height: 100%; width: 1px; left: 50%; top: 0; }
-  #aim-dot {
-    width: 20px; height: 20px; border-radius: 50%;
-    background: #ffd700; box-shadow: 0 0 18px rgba(255,215,0,0.8);
-    position: absolute; transform: translate(-50%, -50%);
+  /* crosshair lines */
+  #preview-wrap::before {
+    content:''; position:absolute; left:0; right:0; top:50%; height:1px;
+    background: rgba(255,255,255,0.06);
+  }
+  #preview-wrap::after {
+    content:''; position:absolute; top:0; bottom:0; left:50%; width:1px;
+    background: rgba(255,255,255,0.06);
+  }
+  #laser-dot {
+    width: 18px; height: 18px; border-radius: 50%;
+    background: #ffd700;
+    box-shadow: 0 0 10px 3px rgba(255,215,0,0.8), 0 0 22px 8px rgba(255,215,0,0.3);
+    position: absolute;
+    transform: translate(-50%, -50%);
     top: 50%; left: 50%;
     will-change: top, left;
   }
 
+  #gyro-status {
+    font-size: 11px; color: rgba(255,255,255,0.25);
+    font-family: monospace; text-align: center;
+  }
+
   #log {
     width: 100%; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 10px; padding: 10px 12px; font-family: monospace; font-size: 11.5px;
-    color: #888; line-height: 1.9; max-height: 140px; overflow-y: auto;
+    border-radius: 10px; padding: 10px 12px; font-family: monospace; font-size: 11px;
+    color: #888; line-height: 1.9; max-height: 110px; overflow-y: auto;
   }
   #log .ok   { color: #00d068; }
   #log .err  { color: #ff5555; }
@@ -75,173 +82,212 @@
 </head>
 <body>
 
-<!-- SCREEN 1: Motion permission -->
+<!-- SCREEN 1: Permission -->
 <div class="screen show" id="s-motion">
   <div class="emoji">📡</div>
   <h2>Motion Access</h2>
-  <p class="sub">This controller needs your phone's motion sensor to track where you're pointing.</p>
-  <button class="btn" id="btn-allow" onclick="grantMotion()">Allow Motion Sensors</button>
+  <p class="sub">Uses your phone's gyroscope like a laser pointer — point it at the screen and move it around.</p>
+  <button class="btn" id="btn-allow" onclick="grantMotion()">Enable Gyroscope</button>
   <div id="log"></div>
 </div>
 
-<!-- SCREEN 2: Enter code -->
+<!-- SCREEN 2: Code entry -->
 <div class="screen" id="s-code">
   <div class="emoji">🍉</div>
   <h2>Enter Game Code</h2>
-  <p class="sub">Type the code shown on your computer screen</p>
+  <p class="sub">Type the 6-letter code shown on your computer</p>
   <input type="text" id="code" maxlength="6" placeholder="XXXXXX"
     autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"/>
   <button class="btn" id="btn-connect" onclick="doConnect()">Connect to Game</button>
-  <div id="log2"></div>
+  <div id="log"></div>
 </div>
 
-<!-- SCREEN 3: Active laser pointer -->
+<!-- SCREEN 3: Active -->
 <div class="screen" id="s-active">
-  <h2>🎮 Pointing at screen</h2>
-  <div id="aim-wrap">
-    <div id="aim-circle"></div>
-    <div class="aim-line" id="aim-h"></div>
-    <div class="aim-line" id="aim-v"></div>
-    <div id="aim-dot"></div>
+  <div class="emoji">🎯</div>
+  <h2>Laser Pointer Active</h2>
+
+  <div id="preview-wrap">
+    <div id="laser-dot"></div>
+    <div id="preview-label">screen preview</div>
   </div>
+
+  <div id="gyro-status">—</div>
+
   <p class="sub">
-    Point your phone at the screen.<br>
-    The dot shows where your cursor is.
+    Point phone at screen centre, then tap calibrate.<br>
+    Move phone like a laser pointer.
   </p>
-  <button class="btn" onclick="doCalibrate()">🎯 Point at centre → Calibrate</button>
-  <button class="btn-ghost" onclick="goBack()">← Disconnect</button>
+  <button class="btn" onclick="doCalibrate()">🎯 Calibrate Centre</button>
 </div>
 
 <script>
-// ── unified log that works on whichever screen is current ──
-function log(msg, cls, targetId) {
-  const el = document.getElementById(targetId || 'log');
+// ─── Logging ───────────────────────────────────────────────────────────────
+function log(msg, cls) {
+  const el = document.querySelector('.screen.show #log');
   if (!el) return;
   const d = document.createElement('div');
   if (cls) d.className = cls;
-  d.textContent = new Date().toLocaleTimeString() + '  ' + msg;
+  d.textContent = new Date().toLocaleTimeString('en',{hour12:false}) + '  ' + msg;
   el.appendChild(d);
   el.scrollTop = el.scrollHeight;
 }
 
-// ── Screen switching ──
 function show(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('show'));
   document.getElementById(id).classList.add('show');
 }
 
-// ── URL code autofill ──
 const urlCode = new URLSearchParams(location.search).get('code');
-if (urlCode) {
-  // wait for DOM then fill
-  setTimeout(() => { document.getElementById('code').value = urlCode; }, 0);
-}
+if (urlCode) setTimeout(() => {
+  const el = document.getElementById('code');
+  if (el) el.value = urlCode;
+}, 0);
 
-// ─────────────────────────────────────────
-// STEP 1 — MOTION PERMISSION
-// ─────────────────────────────────────────
-let gyroReady = false;
+// ═══════════════════════════════════════════════════════════════════════════
+//  GYRO INTEGRATION — the only correct way to do a laser pointer
+//
+//  devicemotion gives us rotationRate: how fast the phone is rotating RIGHT NOW
+//  in degrees/second around each axis.
+//
+//  We integrate (sum up) those velocities over time → total angle rotated
+//  from the calibration point. That IS the pointing direction. No gimbal lock,
+//  no compass interference, no tilt weirdness.
+//
+//  Axes (phone held portrait, screen facing you):
+//    alpha (z-axis): spin the phone like a steering wheel  — not useful
+//    beta  (x-axis): tilt forward/back (pitch) → maps to screen Y
+//    gamma (y-axis): tilt left/right  (roll)   → maps to screen X
+//
+//  BUT: when you PAN left/right like a laser pointer, that IS gamma rotation.
+//       when you TILT up/down like a laser pointer, that IS beta rotation.
+//  So the mapping is: rotationRate.beta → Y,  rotationRate.gamma → X
+// ═══════════════════════════════════════════════════════════════════════════
 
-// Raw orientation values
-let rawAlpha = 0, rawBeta = 0, rawGamma = 0;
-// Calibration "zero" point
-let calAlpha = null, calBeta = null, calGamma = null;
-let gyroCount = 0;
+// Accumulated angles from calibration point (degrees)
+let accumX = 0;  // left/right pan  (driven by gamma rate)
+let accumY = 0;  // up/down tilt    (driven by beta rate)
 
-function onOrientation(e) {
-  rawAlpha = e.alpha ?? 0;
-  rawBeta  = e.beta  ?? 0;
-  rawGamma = e.gamma ?? 0;
-  gyroCount++;
+// Normalised pointer position [0..1]
+let nx = 0.5, ny = 0.5;
 
-  if (gyroCount === 1) {
-    log('✅ Motion sensor active!', 'ok');
-    gyroReady = true;
+// How many degrees of phone movement = full screen width/height from centre
+// 30° each way = 60° total range. Increase to make it less sensitive.
+const RANGE_DEG = 30;
+
+let lastMotionTime = null;
+let motionReady = false;
+let motionCount = 0;
+
+function onMotion(e) {
+  const rr = e.rotationRate;
+  if (!rr || rr.beta === null || rr.gamma === null) return;
+
+  const now = performance.now();
+  const dt = lastMotionTime === null ? 0 : (now - lastMotionTime) / 1000; // seconds
+  lastMotionTime = now;
+
+  motionCount++;
+  if (!motionReady && motionCount >= 3) {
+    motionReady = true;
+    log('Gyroscope active ✅', 'ok');
   }
 
-  // Update aim dot — show relative to cal point, or raw beta/gamma if not yet calibrated
-  const dG = calGamma !== null ? rawGamma - calGamma : rawGamma;
-  const dB = calBeta  !== null ? rawBeta  - calBeta  : (rawBeta - 45);
-  const RANGE = 35; // degrees that map to edge of circle
-  const px = 90 + Math.max(-82, Math.min(82, dG / RANGE * 82));
-  const py = 90 + Math.max(-82, Math.min(82, dB / RANGE * 82));
-  document.getElementById('aim-dot').style.left = px + 'px';
-  document.getElementById('aim-dot').style.top  = py + 'px';
+  if (dt <= 0 || dt > 0.1) return; // skip first frame or stale frames
+
+  // rotationRate is in deg/s. Multiply by dt to get degrees rotated this frame.
+  // gamma = rotation around Y axis = left/right pan → screen X
+  // beta  = rotation around X axis = up/down tilt  → screen Y
+  //
+  // Sign conventions (verified against W3C spec):
+  //   gamma positive = phone top tilts right = pointer moves RIGHT → +X ✓
+  //   beta  positive = phone top tilts away (backward) = pointer moves DOWN → +Y
+  //   So we negate beta: tilt phone top toward you (forward) = pointer moves UP
+
+  accumX += rr.gamma * dt;
+  accumY -= rr.beta  * dt;   // negate: forward tilt = up on screen
+
+  // Map accumulated angles to [0..1] screen space
+  nx = 0.5 + accumX / (RANGE_DEG * 2);
+  ny = 0.5 + accumY / (RANGE_DEG * 2);  // note: accumY already negated above
+  nx = Math.max(0, Math.min(1, nx));
+  ny = Math.max(0, Math.min(1, ny));
+
+  // Update preview dot
+  const dot = document.getElementById('laser-dot');
+  if (dot) {
+    dot.style.left = (nx * 220) + 'px';
+    dot.style.top  = (ny * 140) + 'px';
+  }
+
+  const gs = document.getElementById('gyro-status');
+  if (gs) gs.textContent =
+    `γ:${rr.gamma.toFixed(1)}°/s  β:${rr.beta.toFixed(1)}°/s  →  x:${nx.toFixed(2)}  y:${ny.toFixed(2)}`;
 }
 
-// Listen immediately — works on most Android without permission
-window.addEventListener('deviceorientation',         onOrientation, true);
-window.addEventListener('deviceorientationabsolute', onOrientation, true);
+window.addEventListener('devicemotion', onMotion, true);
 
+// ─── Permission ─────────────────────────────────────────────────────────────
 function grantMotion() {
   const btn = document.getElementById('btn-allow');
-  btn.disabled = true;
-  btn.textContent = 'Waiting…';
+  btn.disabled = true; btn.textContent = 'Waiting…';
 
-  // iOS 13+ needs explicit requestPermission
-  if (typeof DeviceOrientationEvent !== 'undefined' &&
-      typeof DeviceOrientationEvent.requestPermission === 'function') {
-    DeviceOrientationEvent.requestPermission().then(state => {
+  // iOS 13+ needs explicit permission for DeviceMotionEvent
+  if (typeof DeviceMotionEvent !== 'undefined' &&
+      typeof DeviceMotionEvent.requestPermission === 'function') {
+    DeviceMotionEvent.requestPermission().then(state => {
       log('Permission: ' + state, state === 'granted' ? 'ok' : 'err');
       if (state === 'granted') {
-        waitForGyro();
+        waitForMotion();
       } else {
-        log('Denied — go to Settings → Browser → Motion Access → ON', 'err');
+        log('Denied — Settings → Safari → Motion & Orientation Access → ON', 'err');
         btn.disabled = false; btn.textContent = 'Try Again';
       }
     }).catch(err => {
       log('Error: ' + err, 'err');
-      waitForGyro(); // try anyway
+      waitForMotion();
     });
   } else {
-    // Android: permission auto-granted, just wait for first event
-    log('Checking motion sensor…', 'info');
-    waitForGyro();
+    log('Checking gyroscope…', 'info');
+    waitForMotion();
   }
 }
 
-function waitForGyro() {
-  // Give it 2.5s to get first event
+function waitForMotion() {
   let waited = 0;
   const check = setInterval(() => {
-    waited += 250;
-    if (gyroCount > 0) {
+    waited += 200;
+    if (motionReady) {
       clearInterval(check);
-      log('Sensor confirmed ✅', 'ok');
       setTimeout(() => {
         show('s-code');
-        if (urlCode) {
-          // auto-connect if code in URL
-          setTimeout(doConnect, 400);
-        }
-      }, 400);
-    } else if (waited >= 2500) {
+        if (urlCode) setTimeout(doConnect, 400);
+      }, 300);
+    } else if (waited >= 3000) {
       clearInterval(check);
-      log('⚠️ No sensor events. On Android Chrome, the page must be served over HTTPS for motion access.', 'warn');
+      log('⚠️ No gyroscope events. Page must be served over HTTPS.', 'warn');
       const btn = document.getElementById('btn-allow');
       btn.disabled = false; btn.textContent = 'Try Again';
     }
-  }, 250);
+  }, 200);
 }
 
-// ─────────────────────────────────────────
-// STEP 2 — PEER CONNECTION
-// ─────────────────────────────────────────
+// ─── PeerJS ──────────────────────────────────────────────────────────────────
 let peer, conn, sendTimer;
 
 function loadPeerJS(cb) {
   if (window.Peer) { cb(); return; }
-  log('Loading network library…', 'info', 'log2');
+  log('Loading network library…', 'info');
   const s = document.createElement('script');
   s.src = 'https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js';
-  s.onload = () => { log('Ready', 'ok', 'log2'); cb(); };
-  s.onerror = () => log('Failed to load — check internet', 'err', 'log2');
+  s.onload = () => { log('Ready', 'ok'); cb(); };
+  s.onerror = () => log('Failed to load — check internet', 'err');
   document.head.appendChild(s);
 }
 
 function doConnect() {
   const code = document.getElementById('code').value.trim().toUpperCase();
-  if (code.length < 6) { log('Enter the 6-letter code first', 'err', 'log2'); return; }
+  if (code.length < 6) { log('Enter the 6-letter code first', 'err'); return; }
 
   const btn = document.getElementById('btn-connect');
   btn.disabled = true; btn.textContent = 'Connecting…';
@@ -257,25 +303,24 @@ function doConnect() {
       ]}
     });
 
-    peer.on('open', id => {
-      log('Connecting to ' + code + '…', 'info', 'log2');
+    peer.on('open', () => {
+      log('Connecting to ' + code + '…', 'info');
       conn = peer.connect(code, { reliable: false, serialization: 'json' });
 
       conn.on('open', () => {
-        log('✅ Connected!', 'ok', 'log2');
+        log('✅ Connected!', 'ok');
         show('s-active');
-        // Auto-calibrate when connected so cursor starts centered
-        setTimeout(doCalibrate, 500);
+        doCalibrate();   // zero out immediately on connect
         startSending();
       });
 
       conn.on('error', e => {
-        log('Error: ' + e, 'err', 'log2');
+        log('Error: ' + e, 'err');
         btn.disabled = false; btn.textContent = 'Try Again';
       });
 
       conn.on('close', () => {
-        log('Disconnected', 'err', 'log2');
+        log('Disconnected', 'err');
         if (sendTimer) clearInterval(sendTimer);
         show('s-code');
         btn.disabled = false; btn.textContent = 'Reconnect';
@@ -286,60 +331,35 @@ function doConnect() {
       const msg = e.type === 'peer-unavailable'
         ? 'Game not found — is game.html open on your computer?'
         : (e.message || e.type);
-      log('❌ ' + msg, 'err', 'log2');
+      log('❌ ' + msg, 'err');
       btn.disabled = false; btn.textContent = 'Try Again';
     });
   });
 }
 
-// ─────────────────────────────────────────
-// STEP 3 — LASER POINTER LOGIC
-// ─────────────────────────────────────────
-// Calibrate: record current orientation as "pointing at center"
+// ─── Calibrate ───────────────────────────────────────────────────────────────
+// Reset accumulated angles to zero → cursor snaps to centre
 function doCalibrate() {
-  calAlpha = rawAlpha;
-  calBeta  = rawBeta;
-  calGamma = rawGamma;
+  accumX = 0;
+  accumY = 0;
+  nx = 0.5;
+  ny = 0.5;
   if (conn && conn.open) conn.send({ type: 'calibrate' });
+  log('Calibrated — point at centre done ✅', 'ok');
 }
 
-// Send loop — absolute pointer coords derived from orientation delta
-// from calibration point, mapped to [0,1] screen space
-const RANGE_DEG = 35; // ±35° maps to full screen width/height
-
+// ─── Send loop ────────────────────────────────────────────────────────────────
 function startSending() {
   if (sendTimer) clearInterval(sendTimer);
-
   sendTimer = setInterval(() => {
     if (!conn || !conn.open) return;
-
-    let nx = 0.5, ny = 0.5;
-
-    if (calAlpha !== null) {
-      // delta from calibrated "center aim"
-      let dGamma = rawGamma - calGamma;   // left(-) / right(+)
-      let dBeta  = rawBeta  - calBeta;    // up(-) / down(+)
-
-      // Normalize to [0,1]  (center = 0.5)
-      nx = 0.5 + dGamma / (RANGE_DEG * 2);
-      ny = 0.5 + dBeta  / (RANGE_DEG * 2);
-      nx = Math.max(0, Math.min(1, nx));
-      ny = Math.max(0, Math.min(1, ny));
-    }
-
     conn.send({ type: 'pointer', nx, ny });
-  }, 16); // ~60fps for smooth aiming
+  }, 16); // 60fps
 }
 
-function goBack() {
-  if (sendTimer) clearInterval(sendTimer);
-  if (conn) { try { conn.close(); } catch(e){} }
-  if (peer) { try { peer.destroy(); } catch(e){} }
-  show('s-code');
-}
-
-document.getElementById('code').addEventListener('keydown', e => {
-  if (e.key === 'Enter') doConnect();
+document.addEventListener('DOMContentLoaded', () => {
+  const inp = document.getElementById('code');
+  if (inp) inp.addEventListener('keydown', e => { if (e.key === 'Enter') doConnect(); });
 });
 </script>
 </body>
