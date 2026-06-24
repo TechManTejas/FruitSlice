@@ -106,29 +106,36 @@ const PALETTE = [
 
 class Fruit {
   constructor() {
-    this.r = 28 + Math.random() * 18;
-    // spawn from sides or bottom, travel slowly across entire screen
-    const side = Math.floor(Math.random() * 3); // 0=left, 1=right, 2=bottom
-    if (side === 0) {
+    // Much wider size variety: tiny (18) to huge (52)
+    this.r = 18 + Math.random() * 34;
+    // 70% from bottom (arcing up), 15% from left, 15% from right
+    const roll = Math.random();
+    if (roll < 0.15) {
+      // left side
       this.x = -this.r;
-      this.y = H * 0.15 + Math.random() * H * 0.7;
-      this.vx = 0.6 + Math.random() * 0.8;
-      this.vy = -0.4 + Math.random() * 0.8;
-    } else if (side === 1) {
+      this.y = H * 0.2 + Math.random() * H * 0.6;
+      this.vx = 0.7 + Math.random() * 0.8;
+      this.vy = -0.6 + Math.random() * 0.4;
+    } else if (roll < 0.30) {
+      // right side
       this.x = W + this.r;
-      this.y = H * 0.15 + Math.random() * H * 0.7;
-      this.vx = -(0.6 + Math.random() * 0.8);
-      this.vy = -0.4 + Math.random() * 0.8;
+      this.y = H * 0.2 + Math.random() * H * 0.6;
+      this.vx = -(0.7 + Math.random() * 0.8);
+      this.vy = -0.6 + Math.random() * 0.4;
     } else {
-      this.x = W * 0.1 + Math.random() * W * 0.8;
+      // bottom — reach 78% to 100% of screen height
+      // physics: peak height = vy² / (2 * gravity)
+      // with gravity=0.022: vy = sqrt(2 * 0.022 * H * coverage)
+      this.x = W * 0.08 + Math.random() * W * 0.84;
       this.y = H + this.r;
-      this.vx = -0.5 + Math.random() * 1.0;
-      // slow upward arc — goes ~60-80% of screen height
-      this.vy = -(3.5 + Math.random() * 2.0);
+      const minVy = Math.sqrt(2 * 0.022 * H * 0.78);
+      const maxVy = Math.sqrt(2 * 0.022 * H * 1.00);
+      this.vy = -(minVy + Math.random() * (maxVy - minVy));
+      this.vx = -0.8 + Math.random() * 1.6;
     }
-    this.gravity = 0.018;
+    this.gravity = 0.022; // low gravity = tall floaty arcs, slow fall
     this.rot = Math.random() * Math.PI * 2;
-    this.rotSpeed = (Math.random() - 0.5) * 0.012;
+    this.rotSpeed = (Math.random() - 0.5) * 0.006; // slow lazy spin
     const c = PALETTE[Math.floor(Math.random() * PALETTE.length)];
     this.fill = c.fill; this.inner = c.inner; this.shadow = c.shadow;
     this.sliced = false;
@@ -138,11 +145,11 @@ class Fruit {
   }
 
   update() {
-    this.vy += this.gravity;
-    this.x += this.vx;
-    this.y += this.vy;
-    this.rot += this.rotSpeed;
-    this.wobble += this.wobbleSpeed;
+    this.vy += this.gravity * TIME_SCALE;
+    this.x += this.vx * TIME_SCALE;
+    this.y += this.vy * TIME_SCALE;
+    this.rot += this.rotSpeed * TIME_SCALE;
+    this.wobble += this.wobbleSpeed * TIME_SCALE;
     if (this.x < -this.r * 4 || this.x > W + this.r * 4 || this.y > H + this.r * 4) {
       this.offscreen = true;
     }
@@ -203,9 +210,9 @@ class Half {
     this.life = 1; this.dir = dir;
   }
   update() {
-    this.x += this.vx; this.y += this.vy;
-    this.vy += this.gravity; this.rot += this.rotSpeed;
-    this.life -= 0.018;
+    this.x += this.vx * TIME_SCALE; this.y += this.vy * TIME_SCALE;
+    this.vy += this.gravity * TIME_SCALE; this.rot += this.rotSpeed * TIME_SCALE;
+    this.life -= 0.018 * TIME_SCALE;
   }
   draw() {
     ctx.save();
@@ -238,7 +245,7 @@ class Particle {
     this.color = color;
     this.gravity = 0.08;
   }
-  update() { this.x+=this.vx; this.y+=this.vy; this.vy+=this.gravity; this.life-=this.decay; }
+  update() { this.x+=this.vx*TIME_SCALE; this.y+=this.vy*TIME_SCALE; this.vy+=this.gravity*TIME_SCALE; this.life-=this.decay*TIME_SCALE; }
   draw() {
     ctx.save();
     ctx.globalAlpha = Math.max(0, this.life * 0.8);
@@ -255,7 +262,7 @@ class ScorePopup {
     this.x = x; this.y = y; this.text = text;
     this.life = 1; this.vy = -1.2;
   }
-  update() { this.y += this.vy; this.life -= 0.02; }
+  update() { this.y += this.vy * TIME_SCALE; this.life -= 0.02 * TIME_SCALE; }
   draw() {
     ctx.save();
     ctx.globalAlpha = Math.max(0, this.life);
@@ -273,22 +280,34 @@ function spawnFruit() {
   fruits.push(new Fruit());
 }
 
-function trySlice() {
-  if (slashTrail.length < 2) return;
-  const p = slashTrail[slashTrail.length-2];
-  const q = slashTrail[slashTrail.length-1];
-  const moved = Math.hypot(q.x - p.x, q.y - p.y);
-  if (moved < 4) return;
+function sliceFruit(f) {
+  if (f.sliced) return;
+  f.sliced = true;
+  for (let i = 0; i < 14; i++) particles.push(new Particle(f.x, f.y, f.fill));
+  halves.push(new Half(f, -1));
+  halves.push(new Half(f, 1));
+  score++;
+  scoreEl.textContent = score;
+  popups.push(new ScorePopup(f.x, f.y - f.r - 10, '+1'));
+}
 
+function trySlice() {
   fruits.forEach(f => {
-    if (!f.sliced && f.hitTest(p.x, p.y, q.x, q.y)) {
-      f.sliced = true;
-      for (let i = 0; i < 12; i++) particles.push(new Particle(f.x, f.y, f.fill));
-      halves.push(new Half(f, -1));
-      halves.push(new Half(f, 1));
-      score++;
-      scoreEl.textContent = score;
-      popups.push(new ScorePopup(f.x, f.y - f.r - 10, '+1'));
+    if (f.sliced) return;
+
+    // 1. Point-in-circle: fruit flew into cursor (works even when cursor is still)
+    const distToCursor = Math.hypot(f.x - cx, f.y - cy);
+    if (distToCursor < f.r + 10) { // +10 for the cursor's own visual radius
+      sliceFruit(f);
+      return;
+    }
+
+    // 2. Slash-line intersection: cursor moved fast enough to sweep through fruit
+    if (slashTrail.length < 2) return;
+    const p = slashTrail[slashTrail.length - 2];
+    const q = slashTrail[slashTrail.length - 1];
+    if (Math.hypot(q.x - p.x, q.y - p.y) >= 2 && f.hitTest(p.x, p.y, q.x, q.y)) {
+      sliceFruit(f);
     }
   });
   fruits = fruits.filter(f => !f.sliced);
@@ -304,6 +323,7 @@ const stars = Array.from({length: 80}, () => ({
 }));
 
 let frame = 0;
+const TIME_SCALE = 0.5; // global speed multiplier — 0.5 = half speed
 
 function draw() {
   ctx.clearRect(0, 0, W, H);
@@ -317,7 +337,7 @@ function draw() {
 
   // stars
   stars.forEach(s => {
-    s.twinkle += s.speed;
+    s.twinkle += s.speed * TIME_SCALE;
     const a = s.a * (0.6 + 0.4 * Math.sin(s.twinkle));
     ctx.beginPath();
     ctx.arc(s.x * W, s.y * H, s.r, 0, Math.PI*2);
@@ -330,13 +350,15 @@ function draw() {
   updateCursor();
   frame++;
 
-  // spawn — one fruit every ~3 seconds at 60fps
+  // spawn — more frequent, bigger waves for a fuller screen
   spawnTimer++;
-  if (spawnTimer >= 180) {
+  if (spawnTimer >= 50) {
     spawnTimer = 0;
     spawnFruit();
-    // occasionally spawn 2 at once for variety
-    if (Math.random() < 0.25) spawnFruit();
+    spawnFruit(); // always spawn at least 2
+    if (Math.random() < 0.65) spawnFruit(); // frequent triple
+    if (Math.random() < 0.35) spawnFruit(); // occasional quad
+    if (Math.random() < 0.15) spawnFruit(); // rare quint burst
   }
 
   // update
@@ -402,7 +424,7 @@ function initPeer() {
     conn = c;
     conn.on('open', () => {
       pairingEl.style.display = 'none';
-      statusEl.textContent = '📱 Phone connected — tilt to move!';
+      statusEl.textContent = '📱 Phone connected — point to slice!';
       gameActive = true;
     });
     conn.on('data', handleData);
