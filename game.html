@@ -327,6 +327,7 @@ function draw() {
 
   if (!gameActive) { requestAnimationFrame(draw); return; }
 
+  updateCursor();
   frame++;
 
   // spawn — one fruit every ~3 seconds at 60fps
@@ -416,23 +417,39 @@ function initPeer() {
   });
 }
 
-let baseGamma = null, baseBeta = null;
+// Pointer state
+let targetX = W / 2, targetY = H / 2;
+
+// Adaptive smoothing — feels like a laser: snappy when moving fast, stable when still
+let velX = 0, velY = 0;
 
 function handleData(data) {
-  if (data.type === 'gyro') {
-    const { beta, gamma } = data;
-    if (baseGamma === null) { baseGamma = gamma; baseBeta = beta; }
-    const sensitivity = 10;
-    const dx = (gamma - baseGamma) * sensitivity;
-    const dy = (beta - baseBeta) * sensitivity;
-    cx = Math.max(0, Math.min(W, W/2 + dx));
-    cy = Math.max(0, Math.min(H, H/2 + dy));
-    cursorEl.style.left = cx + 'px';
-    cursorEl.style.top = cy + 'px';
+  if (data.type === 'pointer') {
+    targetX = data.nx * W;
+    targetY = data.ny * H;
   }
   if (data.type === 'calibrate') {
-    baseGamma = null; baseBeta = null;
+    targetX = W / 2;
+    targetY = H / 2;
+    cx = W / 2;
+    cy = H / 2;
   }
+}
+
+function updateCursor() {
+  const dx = targetX - cx;
+  const dy = targetY - cy;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+
+  // Adaptive lerp: faster when far (laser snappiness), gentler when close (stability)
+  // At 200px away -> lerp 0.25, at 10px -> lerp 0.08
+  const lerp = Math.min(0.28, Math.max(0.07, dist / 700));
+
+  cx += dx * lerp;
+  cy += dy * lerp;
+
+  cursorEl.style.left = Math.round(cx) + 'px';
+  cursorEl.style.top  = Math.round(cy) + 'px';
 }
 
 initPeer();
