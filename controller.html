@@ -7,251 +7,340 @@
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { height: 100%; overflow: hidden; touch-action: none; background: #0d0d1a; color: #fff; font-family: system-ui, sans-serif; }
-  body { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding: 24px 20px; gap: 14px; }
+  body { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 28px 22px; gap: 18px; min-height: 100%; }
 
-  h1 { font-size: 20px; font-weight: 300; letter-spacing: 3px; margin-top: 10px; }
+  .screen { display: none; flex-direction: column; align-items: center; gap: 18px; width: 100%; text-align: center; }
+  .screen.show { display: flex; }
 
-  /* Debug log */
-  #log {
-    width: 100%; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
-    border-radius: 10px; padding: 10px 12px; font-family: monospace; font-size: 12px;
-    color: #aaa; line-height: 1.8; min-height: 130px; max-height: 200px; overflow-y: auto;
+  .emoji { font-size: 52px; line-height: 1; }
+  h2 { font-size: 20px; font-weight: 400; letter-spacing: 2px; }
+  .sub { font-size: 14px; color: rgba(255,255,255,0.4); line-height: 1.7; max-width: 280px; }
+
+  .btn {
+    background: #ffd700; color: #000; border: none; border-radius: 14px;
+    padding: 16px 28px; font-size: 16px; font-weight: 700; cursor: pointer;
+    width: 100%; max-width: 280px; transition: opacity 0.15s, transform 0.1s;
   }
-  #log .ok  { color: #00d068; }
-  #log .err { color: #ff5555; }
-  #log .info{ color: #74b9ff; }
+  .btn:active { opacity: 0.82; transform: scale(0.96); }
+  .btn:disabled { opacity: 0.3; pointer-events: none; }
+  .btn-ghost {
+    background: rgba(255,255,255,0.07); color: #fff;
+    border: 1px solid rgba(255,255,255,0.14); border-radius: 14px;
+    padding: 14px 24px; font-size: 15px; cursor: pointer;
+    width: 100%; max-width: 280px;
+  }
+  .btn-ghost:active { background: rgba(255,255,255,0.14); }
 
   input[type=text] {
-    background: rgba(255,255,255,0.08); border: 1.5px solid rgba(255,255,255,0.2);
-    border-radius: 12px; padding: 14px 18px;
-    color: #ffd700; font-size: 26px; font-weight: 700;
+    background: rgba(255,255,255,0.07); border: 1.5px solid rgba(255,255,255,0.18);
+    border-radius: 13px; padding: 15px 18px;
+    color: #ffd700; font-size: 28px; font-weight: 700;
     letter-spacing: 8px; font-family: monospace;
     text-align: center; width: 100%; max-width: 260px;
     text-transform: uppercase; outline: none;
   }
-  input:focus { border-color: rgba(255,215,0,0.5); }
+  input:focus { border-color: rgba(255,215,0,0.45); }
 
-  .btn {
-    background: #ffd700; color: #000; border: none;
-    border-radius: 12px; padding: 15px 28px;
-    font-size: 16px; font-weight: 700; cursor: pointer;
-    width: 100%; max-width: 260px;
+  /* Aim circle */
+  #aim-wrap { position: relative; width: 180px; height: 180px; flex-shrink: 0; }
+  #aim-circle {
+    width: 180px; height: 180px; border-radius: 50%;
+    border: 1.5px solid rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.03);
+    position: absolute; inset: 0;
   }
-  .btn:active { opacity: 0.8; transform: scale(0.97); }
-  .btn:disabled { opacity: 0.35; }
-  .btn-sec {
-    background: rgba(255,255,255,0.08); color: #fff;
-    border: 1px solid rgba(255,255,255,0.15);
-    border-radius: 12px; padding: 13px 24px;
-    font-size: 15px; cursor: pointer; width: 100%; max-width: 260px;
+  .aim-line {
+    position: absolute; background: rgba(255,255,255,0.07);
   }
-  .btn-sec:active { background: rgba(255,255,255,0.15); }
+  #aim-h { width: 100%; height: 1px; top: 50%; left: 0; }
+  #aim-v { height: 100%; width: 1px; left: 50%; top: 0; }
+  #aim-dot {
+    width: 20px; height: 20px; border-radius: 50%;
+    background: #ffd700; box-shadow: 0 0 18px rgba(255,215,0,0.8);
+    position: absolute; transform: translate(-50%, -50%);
+    top: 50%; left: 50%;
+    will-change: top, left;
+  }
 
-  #gyro-big {
-    font-size: 15px; color: rgba(255,255,255,0.3); font-family: monospace;
-    text-align: center; line-height: 2;
+  #log {
+    width: 100%; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 10px; padding: 10px 12px; font-family: monospace; font-size: 11.5px;
+    color: #888; line-height: 1.9; max-height: 140px; overflow-y: auto;
   }
-  #gyro-big span { color: #ffd700; font-size: 20px; }
-
-  .label { font-size: 12px; color: rgba(255,255,255,0.3); text-align: center; }
+  #log .ok   { color: #00d068; }
+  #log .err  { color: #ff5555; }
+  #log .info { color: #74b9ff; }
+  #log .warn { color: #ffd700; }
 </style>
 </head>
 <body>
 
-<h1>🍉 CONTROLLER</h1>
-
-<div id="log"></div>
-
-<input type="text" id="code" maxlength="6" placeholder="XXXXXX"
-  autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"/>
-
-<button class="btn" id="btn-connect" onclick="doConnect()">Connect to Game</button>
-
-<button class="btn-sec" id="btn-perm" onclick="askPermission()" style="display:none">
-  📱 Allow Motion Sensors (iOS)
-</button>
-
-<button class="btn-sec" id="btn-cal" onclick="doCalibrate()" style="display:none">
-  🎯 Recalibrate Center
-</button>
-
-<div id="gyro-big">
-  β (fwd/back): <span id="gB">—</span><br>
-  γ (left/right): <span id="gG">—</span>
+<!-- SCREEN 1: Motion permission -->
+<div class="screen show" id="s-motion">
+  <div class="emoji">📡</div>
+  <h2>Motion Access</h2>
+  <p class="sub">This controller needs your phone's motion sensor to track where you're pointing.</p>
+  <button class="btn" id="btn-allow" onclick="grantMotion()">Allow Motion Sensors</button>
+  <div id="log"></div>
 </div>
-<div class="label">These numbers must change when you tilt the phone</div>
+
+<!-- SCREEN 2: Enter code -->
+<div class="screen" id="s-code">
+  <div class="emoji">🍉</div>
+  <h2>Enter Game Code</h2>
+  <p class="sub">Type the code shown on your computer screen</p>
+  <input type="text" id="code" maxlength="6" placeholder="XXXXXX"
+    autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"/>
+  <button class="btn" id="btn-connect" onclick="doConnect()">Connect to Game</button>
+  <div id="log2"></div>
+</div>
+
+<!-- SCREEN 3: Active laser pointer -->
+<div class="screen" id="s-active">
+  <h2>🎮 Pointing at screen</h2>
+  <div id="aim-wrap">
+    <div id="aim-circle"></div>
+    <div class="aim-line" id="aim-h"></div>
+    <div class="aim-line" id="aim-v"></div>
+    <div id="aim-dot"></div>
+  </div>
+  <p class="sub">
+    Point your phone at the screen.<br>
+    The dot shows where your cursor is.
+  </p>
+  <button class="btn" onclick="doCalibrate()">🎯 Point at centre → Calibrate</button>
+  <button class="btn-ghost" onclick="goBack()">← Disconnect</button>
+</div>
 
 <script>
-// ── Logging ──
-const logEl = document.getElementById('log');
-function log(msg, cls) {
-  const line = document.createElement('div');
-  if (cls) line.className = cls;
-  line.textContent = '[' + new Date().toLocaleTimeString() + '] ' + msg;
-  logEl.appendChild(line);
-  logEl.scrollTop = logEl.scrollHeight;
+// ── unified log that works on whichever screen is current ──
+function log(msg, cls, targetId) {
+  const el = document.getElementById(targetId || 'log');
+  if (!el) return;
+  const d = document.createElement('div');
+  if (cls) d.className = cls;
+  d.textContent = new Date().toLocaleTimeString() + '  ' + msg;
+  el.appendChild(d);
+  el.scrollTop = el.scrollHeight;
 }
 
-// ── Auto-fill code ──
+// ── Screen switching ──
+function show(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('show'));
+  document.getElementById(id).classList.add('show');
+}
+
+// ── URL code autofill ──
 const urlCode = new URLSearchParams(location.search).get('code');
 if (urlCode) {
-  document.getElementById('code').value = urlCode;
-  log('Code pre-filled from URL: ' + urlCode, 'info');
+  // wait for DOM then fill
+  setTimeout(() => { document.getElementById('code').value = urlCode; }, 0);
 }
 
-// ── Gyro ──
-let lastBeta = 0, lastGamma = 0, gyroCount = 0;
+// ─────────────────────────────────────────
+// STEP 1 — MOTION PERMISSION
+// ─────────────────────────────────────────
+let gyroReady = false;
+
+// Raw orientation values
+let rawAlpha = 0, rawBeta = 0, rawGamma = 0;
+// Calibration "zero" point
+let calAlpha = null, calBeta = null, calGamma = null;
+let gyroCount = 0;
 
 function onOrientation(e) {
-  lastBeta  = e.beta  ?? 0;
-  lastGamma = e.gamma ?? 0;
+  rawAlpha = e.alpha ?? 0;
+  rawBeta  = e.beta  ?? 0;
+  rawGamma = e.gamma ?? 0;
   gyroCount++;
-  document.getElementById('gB').textContent = Math.round(lastBeta)  + '°';
-  document.getElementById('gG').textContent = Math.round(lastGamma) + '°';
-  if (gyroCount === 1)  log('✅ First gyro event received!', 'ok');
-  if (gyroCount === 30) log('Gyro streaming OK (' + gyroCount + ' events)', 'ok');
+
+  if (gyroCount === 1) {
+    log('✅ Motion sensor active!', 'ok');
+    gyroReady = true;
+  }
+
+  // Update aim dot — show relative to cal point, or raw beta/gamma if not yet calibrated
+  const dG = calGamma !== null ? rawGamma - calGamma : rawGamma;
+  const dB = calBeta  !== null ? rawBeta  - calBeta  : (rawBeta - 45);
+  const RANGE = 35; // degrees that map to edge of circle
+  const px = 90 + Math.max(-82, Math.min(82, dG / RANGE * 82));
+  const py = 90 + Math.max(-82, Math.min(82, dB / RANGE * 82));
+  document.getElementById('aim-dot').style.left = px + 'px';
+  document.getElementById('aim-dot').style.top  = py + 'px';
 }
 
-function startGyro() {
-  log('Adding deviceorientation listener…', 'info');
-  window.addEventListener('deviceorientation', onOrientation, true);
-  // test after 2s if we got any events
-  setTimeout(() => {
-    if (gyroCount === 0) {
-      log('⚠️ No gyro events yet — sensor may be blocked or unavailable', 'err');
-    }
-  }, 2000);
-}
+// Listen immediately — works on most Android without permission
+window.addEventListener('deviceorientation',         onOrientation, true);
+window.addEventListener('deviceorientationabsolute', onOrientation, true);
 
-function askPermission() {
-  log('Requesting iOS motion permission…', 'info');
-  DeviceOrientationEvent.requestPermission().then(state => {
-    log('Permission result: ' + state, state === 'granted' ? 'ok' : 'err');
-    if (state === 'granted') {
-      document.getElementById('btn-perm').style.display = 'none';
-      startGyro();
-    } else {
-      log('Go to Settings → Safari → Motion & Orientation Access → ON', 'err');
-    }
-  }).catch(e => {
-    log('Permission error: ' + e, 'err');
-    startGyro();
-  });
-}
+function grantMotion() {
+  const btn = document.getElementById('btn-allow');
+  btn.disabled = true;
+  btn.textContent = 'Waiting…';
 
-// Check if iOS permission needed
-function initGyro() {
+  // iOS 13+ needs explicit requestPermission
   if (typeof DeviceOrientationEvent !== 'undefined' &&
       typeof DeviceOrientationEvent.requestPermission === 'function') {
-    log('iOS detected — tap "Allow Motion Sensors" button', 'info');
-    document.getElementById('btn-perm').style.display = 'block';
+    DeviceOrientationEvent.requestPermission().then(state => {
+      log('Permission: ' + state, state === 'granted' ? 'ok' : 'err');
+      if (state === 'granted') {
+        waitForGyro();
+      } else {
+        log('Denied — go to Settings → Browser → Motion Access → ON', 'err');
+        btn.disabled = false; btn.textContent = 'Try Again';
+      }
+    }).catch(err => {
+      log('Error: ' + err, 'err');
+      waitForGyro(); // try anyway
+    });
   } else {
-    log('Android/desktop — starting gyro directly', 'info');
-    startGyro();
+    // Android: permission auto-granted, just wait for first event
+    log('Checking motion sensor…', 'info');
+    waitForGyro();
   }
 }
 
-// ── PeerJS ──
+function waitForGyro() {
+  // Give it 2.5s to get first event
+  let waited = 0;
+  const check = setInterval(() => {
+    waited += 250;
+    if (gyroCount > 0) {
+      clearInterval(check);
+      log('Sensor confirmed ✅', 'ok');
+      setTimeout(() => {
+        show('s-code');
+        if (urlCode) {
+          // auto-connect if code in URL
+          setTimeout(doConnect, 400);
+        }
+      }, 400);
+    } else if (waited >= 2500) {
+      clearInterval(check);
+      log('⚠️ No sensor events. On Android Chrome, the page must be served over HTTPS for motion access.', 'warn');
+      const btn = document.getElementById('btn-allow');
+      btn.disabled = false; btn.textContent = 'Try Again';
+    }
+  }, 250);
+}
+
+// ─────────────────────────────────────────
+// STEP 2 — PEER CONNECTION
+// ─────────────────────────────────────────
 let peer, conn, sendTimer;
 
 function loadPeerJS(cb) {
   if (window.Peer) { cb(); return; }
-  log('Loading PeerJS…', 'info');
+  log('Loading network library…', 'info', 'log2');
   const s = document.createElement('script');
   s.src = 'https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js';
-  s.onload = () => { log('PeerJS loaded', 'ok'); cb(); };
-  s.onerror = () => log('Failed to load PeerJS — check internet', 'err');
+  s.onload = () => { log('Ready', 'ok', 'log2'); cb(); };
+  s.onerror = () => log('Failed to load — check internet', 'err', 'log2');
   document.head.appendChild(s);
 }
 
 function doConnect() {
   const code = document.getElementById('code').value.trim().toUpperCase();
-  if (code.length < 6) { log('Enter the full 6-letter code first', 'err'); return; }
+  if (code.length < 6) { log('Enter the 6-letter code first', 'err', 'log2'); return; }
 
   const btn = document.getElementById('btn-connect');
-  btn.disabled = true;
-  btn.textContent = 'Connecting…';
+  btn.disabled = true; btn.textContent = 'Connecting…';
 
   loadPeerJS(() => {
     if (peer) { try { peer.destroy(); } catch(e){} }
 
-    log('Creating PeerJS client…', 'info');
     peer = new Peer({
       host: '0.peerjs.com', port: 443, path: '/', secure: true,
-      debug: 0,
       config: { iceServers: [
         { urls: 'stun:stun.l.google.com:19302' },
         { urls: 'stun:stun1.l.google.com:19302' }
       ]}
     });
 
-    peer.on('open', myId => {
-      log('My peer ID: ' + myId, 'ok');
-      log('Connecting to game: ' + code + '…', 'info');
+    peer.on('open', id => {
+      log('Connecting to ' + code + '…', 'info', 'log2');
       conn = peer.connect(code, { reliable: false, serialization: 'json' });
 
       conn.on('open', () => {
-        log('✅ Connected to game!', 'ok');
-        btn.textContent = '✅ Connected';
-        document.getElementById('btn-cal').style.display = 'block';
+        log('✅ Connected!', 'ok', 'log2');
+        show('s-active');
+        // Auto-calibrate when connected so cursor starts centered
+        setTimeout(doCalibrate, 500);
         startSending();
       });
 
       conn.on('error', e => {
-        log('Connection error: ' + JSON.stringify(e), 'err');
+        log('Error: ' + e, 'err', 'log2');
         btn.disabled = false; btn.textContent = 'Try Again';
       });
 
       conn.on('close', () => {
-        log('Connection closed', 'err');
+        log('Disconnected', 'err', 'log2');
         if (sendTimer) clearInterval(sendTimer);
+        show('s-code');
         btn.disabled = false; btn.textContent = 'Reconnect';
-        document.getElementById('btn-cal').style.display = 'none';
       });
     });
 
     peer.on('error', e => {
       const msg = e.type === 'peer-unavailable'
-        ? 'Game not found — is game.html open in the browser?'
+        ? 'Game not found — is game.html open on your computer?'
         : (e.message || e.type);
-      log('PeerJS error: ' + msg, 'err');
+      log('❌ ' + msg, 'err', 'log2');
       btn.disabled = false; btn.textContent = 'Try Again';
     });
   });
 }
 
-function startSending() {
-  if (sendTimer) clearInterval(sendTimer);
-  let sent = 0;
-  sendTimer = setInterval(() => {
-    if (conn && conn.open) {
-      conn.send({ type: 'gyro', beta: lastBeta, gamma: lastGamma });
-      sent++;
-      if (sent === 1)  log('Sending gyro data…', 'info');
-      if (sent === 30) log('Gyro stream active ✅', 'ok');
-    } else {
-      log('Connection lost during send', 'err');
-      clearInterval(sendTimer);
-    }
-  }, 33);
+// ─────────────────────────────────────────
+// STEP 3 — LASER POINTER LOGIC
+// ─────────────────────────────────────────
+// Calibrate: record current orientation as "pointing at center"
+function doCalibrate() {
+  calAlpha = rawAlpha;
+  calBeta  = rawBeta;
+  calGamma = rawGamma;
+  if (conn && conn.open) conn.send({ type: 'calibrate' });
 }
 
-function doCalibrate() {
-  if (conn && conn.open) {
-    conn.send({ type: 'calibrate' });
-    log('Calibrated center', 'ok');
-  } else {
-    log('Not connected', 'err');
-  }
+// Send loop — absolute pointer coords derived from orientation delta
+// from calibration point, mapped to [0,1] screen space
+const RANGE_DEG = 35; // ±35° maps to full screen width/height
+
+function startSending() {
+  if (sendTimer) clearInterval(sendTimer);
+
+  sendTimer = setInterval(() => {
+    if (!conn || !conn.open) return;
+
+    let nx = 0.5, ny = 0.5;
+
+    if (calAlpha !== null) {
+      // delta from calibrated "center aim"
+      let dGamma = rawGamma - calGamma;   // left(-) / right(+)
+      let dBeta  = rawBeta  - calBeta;    // up(-) / down(+)
+
+      // Normalize to [0,1]  (center = 0.5)
+      nx = 0.5 + dGamma / (RANGE_DEG * 2);
+      ny = 0.5 + dBeta  / (RANGE_DEG * 2);
+      nx = Math.max(0, Math.min(1, nx));
+      ny = Math.max(0, Math.min(1, ny));
+    }
+
+    conn.send({ type: 'pointer', nx, ny });
+  }, 16); // ~60fps for smooth aiming
+}
+
+function goBack() {
+  if (sendTimer) clearInterval(sendTimer);
+  if (conn) { try { conn.close(); } catch(e){} }
+  if (peer) { try { peer.destroy(); } catch(e){} }
+  show('s-code');
 }
 
 document.getElementById('code').addEventListener('keydown', e => {
   if (e.key === 'Enter') doConnect();
 });
-
-// Start
-log('Page loaded. Checking gyro…', 'info');
-initGyro();
 </script>
 </body>
 </html>
